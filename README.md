@@ -1,6 +1,11 @@
 # Topological Flow Matching Visualizer
 
-> **Unofficial experimental implementation.**  
+
+
+**Unofficial experimental implementation.**  
+
+- cf. Paper: [Topological Flow Matching](https://openreview.net/forum?id=5CM3ax45Ma)
+
 > This repository is **not** the official repository of the Topological Flow Matching paper and is **not maintained by the paper authors**. It is an independent, experimental visualizer and research prototype intended to help inspect, compare, and reason about CFM / TFM-style dynamics on a small synthetic 2-simplicial complex.
 
 This app visualizes and experiments with **Conditional Flow Matching (CFM)**, **Topological Flow Matching (TFM)**, **I-TFM**, **OT-TFM**, **I-CFM**, and **OT-CFM** on an annulus-shaped 2-simplicial complex.

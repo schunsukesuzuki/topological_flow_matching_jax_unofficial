@@ -1,0 +1,13 @@
+/* Append these rules to frontend/src/style.css. */
+
+.mu0-ablation-card {
+  border-color: #d9f2ee;
+}
+
+.mu0-summary-table th,
+.mu0-summary-table td,
+.mu0-ablation-table th,
+.mu0-ablation-table td {
+  font-size: 12px;
+  white-space: nowrap;
+}

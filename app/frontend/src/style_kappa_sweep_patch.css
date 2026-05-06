@@ -1,0 +1,11 @@
+/* Append these rules to frontend/src/style.css. */
+
+.kappa-sweep-card {
+  border-color: #fde7c7;
+}
+
+.kappa-sweep-table th,
+.kappa-sweep-table td {
+  font-size: 12px;
+  white-space: nowrap;
+}

@@ -1,0 +1,210 @@
+import { useState } from "react";
+import { generateITFM, trainITFM } from "../api";
+import type {
+  GenerateITFMResponse,
+  SpectralMetrics,
+  SpectralMetricSummary,
+  TrainITFMResponse,
+} from "../types";
+import { ComplexView } from "./ComplexView";
+
+type Props = {
+  withFace: boolean;
+  kappa: number;
+};
+
+function fmt(x: number) {
+  if (!Number.isFinite(x)) return "NaN";
+  if (Math.abs(x) >= 1000 || Math.abs(x) < 0.001) return x.toExponential(3);
+  return x.toFixed(4);
+}
+
+function fmtMeanStd(v: { mean: number; std: number }) {
+  return `${fmt(v.mean)} ± ${fmt(v.std)}`;
+}
+
+const rows: Array<[keyof SpectralMetrics, string]> = [
+  ["harmonic_energy", "harmonic energy"],
+  ["low_frequency_energy", "low-frequency energy"],
+  ["high_frequency_energy", "high-frequency energy"],
+  ["hodge_energy", "xᵀL₁x"],
+  ["l2_norm", "||x||²"],
+];
+
+function MetricTable({ metrics }: { metrics: GenerateITFMResponse["metrics"] }) {
+  return (
+    <div className="table-scroll">
+      <table className="matrix metric-table">
+        <thead>
+          <tr>
+            <th>metric</th>
+            <th>source μ0</th>
+            <th>generated x̂1</th>
+            <th>reference μ1</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([key, label]) => (
+            <tr key={key}>
+              <th>{label}</th>
+              <td>{fmt(metrics.source[key])}</td>
+              <td>{fmt(metrics.generated[key])}</td>
+              <td>{fmt(metrics.reference[key])}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AggregateMetricTable({ metrics }: { metrics: GenerateITFMResponse["aggregate_metrics"] }) {
+  return (
+    <div className="table-scroll">
+      <table className="matrix metric-table">
+        <thead>
+          <tr>
+            <th>metric</th>
+            <th>source μ0 mean ± std</th>
+            <th>generated mean ± std</th>
+            <th>reference μ1 mean ± std</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([key, label]) => (
+            <tr key={key}>
+              <th>{label}</th>
+              <td>{fmtMeanStd(metrics.source[key as keyof SpectralMetricSummary])}</td>
+              <td>{fmtMeanStd(metrics.generated[key as keyof SpectralMetricSummary])}</td>
+              <td>{fmtMeanStd(metrics.reference[key as keyof SpectralMetricSummary])}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function ITFMPanel({ withFace, kappa }: Props) {
+  const [training, setTraining] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [trainResult, setTrainResult] = useState<TrainITFMResponse | null>(null);
+  const [generateResult, setGenerateResult] = useState<GenerateITFMResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleTrain() {
+    setTraining(true);
+    setError(null);
+    try {
+      const result = await trainITFM({
+        with_face: withFace,
+        kappa,
+        n_samples: 2048,
+        n_steps: 2000,
+        learning_rate: 0.002,
+        seed: 0,
+      });
+      setTrainResult(result);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setTraining(false);
+    }
+  }
+
+  async function handleGenerate() {
+    setGenerating(true);
+    setError(null);
+    try {
+      const result = await generateITFM({
+        with_face: withFace,
+        kappa,
+        rollout_steps: 160,
+        seed: 1,
+        n_eval: 32,
+        control_scale: 0.92,
+      });
+      setGenerateResult(result);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  return (
+    <div className="card wide itfm-card">
+      <h3>I-TFM distribution-level training</h3>
+      <p className="muted">
+        This trains uθ(t, x_t, κ) from many independent pairs (X0, X1) ~ μ0 ⊗ μ1.
+        Unlike the single-pair fitting demo, x1 is not part of the neural input,
+        so the learned vector field can be used for generation from x0 alone.
+      </p>
+
+      <div className="button-row">
+        <button onClick={handleTrain} disabled={training}>
+          {training ? "Training I-TFM..." : "Train I-TFM"}
+        </button>
+        <button onClick={handleGenerate} disabled={generating}>
+          {generating ? "Generating..." : "Generate sample"}
+        </button>
+      </div>
+
+      {error && <div className="error">{error}</div>}
+
+      {trainResult && (
+        <p className="muted">
+          Trained on {trainResult.n_samples} independent pairs for {trainResult.n_steps} steps.
+          normalized MSE = {trainResult.final_loss.toExponential(3)},
+          displayed-scale MSE = {trainResult.unnormalized_mse.toExponential(3)}.
+        </p>
+      )}
+
+      {generateResult && (
+        <>
+          <p className="muted">
+            Generated by ODE rollout with dx/dt = -κLx + {generateResult.control_scale.toFixed(2)}·uθ(t, x).
+            Rollout steps = {generateResult.rollout_steps}; distribution diagnostics use n_eval = {generateResult.n_eval}.
+          </p>
+
+          <div className="itfm-generated-grid">
+            <ComplexView
+              title="I-TFM source x0 ~ μ0"
+              nodes={generateResult.nodes}
+              edges={generateResult.edges}
+              faces={generateResult.faces}
+              signal={generateResult.source_signal}
+            />
+            <ComplexView
+              title="Generated x̂1"
+              nodes={generateResult.nodes}
+              edges={generateResult.edges}
+              faces={generateResult.faces}
+              signal={generateResult.generated_signal}
+            />
+            <ComplexView
+              title="Reference target x1 ~ μ1"
+              nodes={generateResult.nodes}
+              edges={generateResult.edges}
+              faces={generateResult.faces}
+              signal={generateResult.target_reference_signal}
+            />
+          </div>
+
+          <h4>I-TFM spectral diagnostics: single displayed samples</h4>
+          <p className="muted">
+            These are the three samples shown above. Pointwise matching is not expected.
+          </p>
+          <MetricTable metrics={generateResult.metrics} />
+
+          <h4>I-TFM spectral diagnostics: distribution mean over n_eval</h4>
+          <p className="muted">
+            This is the more important comparison: generated samples should move from μ0 statistics
+            toward μ1 statistics in harmonic / low-frequency / high-frequency energies.
+          </p>
+          <AggregateMetricTable metrics={generateResult.aggregate_metrics} />
+        </>
+      )}
+    </div>
+  );
+}

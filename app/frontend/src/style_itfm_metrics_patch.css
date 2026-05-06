@@ -1,0 +1,48 @@
+/* Append these rules to frontend/src/style.css. */
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+button {
+  border: 1px solid #cfd7e6;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 9px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.itfm-card .complex-svg {
+  min-height: 190px;
+}
+
+.itfm-generated-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.itfm-generated-grid .card {
+  padding: 12px;
+}
+
+.metric-table th,
+.metric-table td {
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .itfm-generated-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,11 @@
+/* Append these rules to frontend/src/style.css. */
+
+.distribution-distance-card {
+  border-color: #e0e7ff;
+}
+
+.distribution-distance-table th,
+.distribution-distance-table td {
+  font-size: 12px;
+  white-space: nowrap;
+}
